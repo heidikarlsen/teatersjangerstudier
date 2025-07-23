@@ -16,11 +16,13 @@ Citation suggestion: Teatersjangerstudier (2025). A Streamlit app for analyzing 
 
 ### Link to the app: 
 
-The app is hosted on Streamlit Community Cloud, where it can be accessed via this public link.
+The app is hosted on Streamlit Community Cloud, where it can be accessed via this public link: 
+https://teatersjangerstudier.streamlit.app/
+
 
 ### How to run locally
 
-If you want to run this app locally: https://teatersjangerstudier.streamlit.app/
+If you want to run this app locally: 
 
 ```bash
 pip install -r requirements.txt
