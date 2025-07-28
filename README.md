@@ -7,7 +7,9 @@ It allows users to:
 - Select one or two genres and view and compare frequent words (frequency analysis). Filter based on publication year available. 
 - Search for terms in the full-text corpus using concordance analysis (KWIC). Filter based on author and publication year available. 
 
-The data combines manually curated metadata by professor Ellen Rees and postdoctoral fellow Heidi Leclaire-Karlsen, both at the University of Oslo, with document identifiers (`URN`s) that point to full-text materials in the digital collections of the Norwegian National Library.
+The data combines manually curated metadata by professor Ellen Rees and postdoctoral fellow Heidi Leclaire-Karlsen, both at the University of Oslo, with document identifiers (`URN`s) that point to full-text materials in the digital collections of the Norwegian National Library. 
+
+Core functionality for corpus building (`dh.Corpus()`), frequency counting (`Counts()`), and concordance generation (`Concordance()`) is based on code developed by the [Norwegian National Library's Digital Humanities Lab](https://github.com/NationalLibraryOfNorway).
 
 
 The app and associated data are shared under a CC BY 4.0 license.

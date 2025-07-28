@@ -20,7 +20,7 @@ st.markdown(
 # === Last metadata ===
 meta_df = pd.read_excel("Sjangre_kategorisert_010625.xlsx")
 
-# === Hjelpefunksjon for å hente URN-er ===
+# === Funksjon for å hente URN-er ===
 def get_urns_for_genre(df, genre, year_from, year_to):
     genre_filtered = df[
         (df["genre"].str.strip().str.casefold() == genre.casefold()) &
@@ -30,7 +30,7 @@ def get_urns_for_genre(df, genre, year_from, year_to):
     ]
     return genre_filtered["urn"].tolist()
 
-# === Hjelpefunksjon for å hente frekvensliste ===
+# === Funksjon for å hente frekvensliste ===
 def get_top_words_with_freq(urns, start=50, end=70):
     corpus = dh.Corpus()
     corpus.extend_from_identifiers(identifiers=urns)
