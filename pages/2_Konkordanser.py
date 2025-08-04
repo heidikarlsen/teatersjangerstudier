@@ -6,7 +6,7 @@ from dhlab.text.conc_coll import Concordance
 
 st.set_page_config(page_title = "Teatersjangerstudier - Konkordanser", page_icon ="🎭", layout = "wide")
 st.title("Konkordanser i delkorpora definert ved sjangerbenevnelser")
-st.markdown("Velg sjanger i sidebaren. Definer eventuelt andre kritierer eller la det stå urørt for å søke i alle tekster innen valgte sjanger")
+st.markdown("Velg sjanger i sidebaren eller la eventuelt **'Alle'** stå om du ønsker å søke etter konkordanser på tvers av alle dokumentene. Definer eventuelt andre kritierer eller la det stå urørt for å søke i alle tekster eller alle innen valgt sjanger.")
 
 
 query = st.text_input("Søk", "", placeholder="Skriv inn søkeuttrykk her")
@@ -26,16 +26,20 @@ genres_with_urns = (
     .dropna()
     .unique()
 )
-all_genres = sorted(genres_with_urns)
+all_genres = ["Alle"] + sorted(genres_with_urns)
 
 selected_genre = st.sidebar.selectbox("Sjanger", all_genres)
 
 
 # Filtrer metadata basert på valgt sjanger (for å hente forfatterne)
-genre_filtered_df = meta_df[
-    (meta_df["genre"].str.strip().str.casefold() == selected_genre.casefold()) &
-    (meta_df["author"].notna())
-]
+if selected_genre == "Alle":
+    genre_filtered_df = meta_df[meta_df["author"].notna()]
+else:
+    genre_filtered_df = meta_df[
+        (meta_df["genre"].str.strip().str.casefold() == selected_genre.casefold()) &
+        (meta_df["author"].notna())
+    ]
+
 
 
 # Hent forfattere som har skrevet i valgt sjanger
@@ -57,11 +61,14 @@ max_hits = st.sidebar.slider("Maks antall treff", 10, 1000, 100)
 
 # --- Filtrér metadata ---
 filtered = meta_df[
-    (meta_df["genre"].str.strip().str.casefold() == selected_genre.casefold()) &
     (meta_df["urn"].notna()) &
     (meta_df["urn"].str.startswith("URN")) &
     (meta_df["year"].between(year_from, year_to))
 ]
+
+if selected_genre != "Alle":
+    filtered = filtered[filtered["genre"].str.strip().str.casefold() == selected_genre.casefold()]
+
 
 if selected_author != "Alle":
     filtered = filtered[filtered["author"] == selected_author]
