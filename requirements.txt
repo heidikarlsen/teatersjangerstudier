@@ -4,3 +4,4 @@ openpyxl
 dhlab
 matplotlib
 scipy
+openai
