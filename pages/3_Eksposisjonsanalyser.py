@@ -9,11 +9,11 @@ st.title("Chat med korpusene ved hjelp av utdrag fra stykkene (ideelt eksposisjo
 st.markdown("")
 st.markdown(
     """
-Denne funksjonen er under utvikling. Målet er å bruke utdrag fra eksposisjonene i fulltekster fra Nasjonalbiblioteket som grunnlag for analyser og samtaler med en språkmodell.  
+Denne funksjonen er under utvikling. Målet er å tekke ut begynnelsene av fulltekster - tilsvarende ideelt eksposisjonene - fra Nasjonalbiblioteket som grunnlag for analyser og samtaler med en språkmodell.  
 
 Her kan du teste grensesnittet – men AI-en er foreløpig ikke koblet til. 
 
-Når tjenesten er på plass, vil du kunne Velge sjanger i sidebaren eller la eventuelt **'Alle'** stå om du ønsker å analysere eksposisjonene på tvers av sjanger. Definer eventuelt andre kritierer eller la det stå urørt for å søke i tilfeldig utdrag/alle tekster eller alle/tilfeldig utdrag innen valgt sjanger.
+Når tjenesten er på plass, vil du kunne velge sjanger i sidebaren eller la eventuelt **'Alle'** stå om du ønsker å analysere eksposisjonene på tvers av sjanger. Definer eventuelt andre kritierer eller la det stå urørt for å søke i tilfeldig utdrag/alle tekster eller alle/tilfeldig utdrag innen valgt sjanger.
 """
 )
 
@@ -59,9 +59,6 @@ all_authors.insert(0, "Alle")  # Legg til 'Alle' som førstevalg
 #Andre filtre
 year_from = st.sidebar.number_input("Fra år", min_value=1800, max_value=1899, value=1800)
 year_to = st.sidebar.number_input("Til år", min_value=1800, max_value=1899, value=1899)
-window_size = st.sidebar.slider("Konkordansevindu (antall ord før/etter)", 5, 25, 10)
-max_hits = st.sidebar.slider("Maks antall treff", 10, 1000, 100)
-
 
 
 
