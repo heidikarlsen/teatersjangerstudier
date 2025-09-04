@@ -5,7 +5,7 @@ import openai
 
 
 st.set_page_config(page_title = "Teatersjangerstudier - AI-analyser", page_icon ="🎭", layout = "wide")
-st.title("Chat med korpusene ved hjelp av utdrag fra stykkene (ideelt eksposisjonen) via API-et til Open AI.")
+st.title("Analyser av dramaenes 2000 første tokens (ideelt eksposisjonen) via API-et til Open AI")
 st.markdown("")
 st.markdown(
     """
