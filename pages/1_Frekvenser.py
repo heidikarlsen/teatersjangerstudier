@@ -53,7 +53,7 @@ all_genres = sorted([f"{genre} ({count})" for genre, count in genre_counts.items
 # === SIDEBAR ===
 with st.sidebar.form(key="freq_form"):
     selected_genres = st.multiselect(
-        "Velg én sjanger eller to sjangre for å sammenligning", all_genres, default=[all_genres[0]]
+        "Velg én sjanger eller to sjangre for sammenligning", all_genres, default=[all_genres[0]]
     )
 
     year_from = st.number_input("Fra år", min_value=1800, max_value=1899, value=1800)
