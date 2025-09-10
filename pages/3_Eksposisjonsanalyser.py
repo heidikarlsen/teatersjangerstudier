@@ -52,7 +52,7 @@ st.sidebar.markdown(
 
     Disse er sendt til OpenAI sitt API (modell: GPT-5), som har returnert et JSON-objekt per verk (ideelt eksposisjonsanalysene).  
 
-    👉 Se <a href="https://github.com/heidikarlsen/teatersjangerstudier/blob/dev/prompt_expositions" target="_blank">prompten brukt i analysen</a> på Github.
+    👉 Se <a href="https://github.com/heidikarlsen/teatersjangerstudier/blob/dev/prompt_expositions" target="_blank">prompten/ledeteksten brukt i analysen</a> på Github.
     """,
     unsafe_allow_html=True
 )
