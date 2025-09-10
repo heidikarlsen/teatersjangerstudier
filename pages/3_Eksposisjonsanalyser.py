@@ -50,12 +50,13 @@ st.sidebar.markdown(
     """
     De to tusen første tokens er hentet ut fra hvert teaterstykke med tilgjengelig fulltekst fra Nasjonalbiblioteket.  
 
-    Disse er sendt til OpenAI sitt API (modell: GPT-5), som har returnert et JSON-objekt per verk (ideelt eksposisjonsanalysene).
+    Disse er sendt til OpenAI sitt API (modell: GPT-5), som har returnert et JSON-objekt per verk (ideelt eksposisjonsanalysene).  
 
-    👉 Se prompten brukt i analysen nederst på siden.
-
-    """
+    👉 Se <a href="https://github.com/heidikarlsen/teatersjangerstudier/blob/dev/prompt_expositions" target="_blank">prompten brukt i analysen</a> på Github.
+    """,
+    unsafe_allow_html=True
 )
+
 
 st.sidebar.header("Filtrering av eksposisjoner for AI-analyser")
 
