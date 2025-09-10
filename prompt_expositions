@@ -1,0 +1,108 @@
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def analyze_extraction(EXCERPT, model="gpt-5", delay=1.5):
+    """
+   eksposisjonsanalyse
+    """
+ 
+    system_prompt = """
+Du er en tekstanalytiker. **Bruk kun den gitte utdragsteksten.** Ikke gjet sjanger, forfatter, verk, årstall eller kontekst uten klare tekstlige bevis. Skriv på norsk bokmål. Hold deg *kort og presis*. Hvis noe er uklart, markér det under `"uncertainties"`.
+
+Krav:
+- Maks 120 ord i `brief`-feltet. Totalt, hold tekstlig fyll til et minimum.
+- Ikke ta med fritekst utenfor JSON.
+- Bruk korte fraser. Ingen eksterne referanser. Ikke navngi antatte personer utover det teksten eksplisitt gir.
+- Siter aldri mer enn **8 sammenhengende ord** fra utdraget i `evidence.snippet`.
+- Hvis utdraget ser ut til å inneholde sidetall, trykkmerker e.l., registrer det i `metadata` men **ikke** la det styre tolkningen.
+
+"""
+
+
+
+    user_prompt = """
+## 2) Brukerprompt-mal (sendes som `user`)
+**Oppgave:** Analyser eksposisjonen nedenfor **uten fordommer** og kun basert på teksten.
+
+**Returner KUN gyldig JSON** som følger skjemaet i seksjon 3.
+
+## 3) Outputskjema (JSON)
+Returner **kun** ett JSON-objekt med disse feltene:
+{
+  "brief": "Kort (<=120 ord) hva etableres: situasjon, miljø, aktører, gryende konflikt.",
+  "setting": {
+    "time_hint": null,
+    "place_hint": null,
+    "social_milieu": null
+  },
+  "characters": [
+    {
+      "name": "(som i teksten, ellers generisk som 'Ukjent taler 1')",
+      "role_hint": null,
+      "first_impression": "kort frase",
+      "entrance_order": 1,
+      "relations": [ { "target": "Navn/etikett", "relation_hint": "kort" } ]
+    }
+  ],
+  "conflict": {
+    "type": ["social", "familial", "professional", "romantic", "ideological", "unknown"],
+    "incipient": null
+  },
+  "themes": ["maks 3, enkle ord/fraser"],
+  "tone_style": {
+    "tone": "comic | serious | satirical | melodramatic | mixed | unclear",
+    "style_notes": ["maks 3 korte punkter"],
+    "form": "prose | verse | mixed | unclear"
+  },
+  "staging_cues": ["entré/exit, rekvisitter, romangivelser — korte fraser"],
+  "notable_motifs": ["maks 3"],
+  "evidence": [
+    { "claim": "påstand i analysen", "snippet": "kort sitat <= 8 ord" }
+  ],
+  "uncertainties": ["hva som er uklart eller ikke støttet"],
+  "counts": { "speakers": 0, "exits_entries": 0, "stage_directions": 0 },
+  "language_detected": "da | no | sv | de | fr | en | unk",
+  "flags": { "looks_like_drama": true },
+  "metadata": {
+    "non_dialogue_artifacts_present": false,
+    "artifact_notes": null
+  },
+  "confidence_overall": 0.0
+}
+
+
+**Regler for utfylling:**
+- Fyll kun det du faktisk kan støtte i teksten. Ellers bruk `null` eller la feltet være nøkternt.
+- `characters`: bevar rekkefølge for første opptreden (`entrance_order`). Hvis navn ikke finnes, bruk nøytrale etiketter (f.eks. "Taler A").
+- `counts`: estimer enkelt (telle unike talere; grove entré/exit ut fra scenedidascalia; antall sceniske anvisninger i klammer/italics osv.).
+- `confidence_overall`: 0–1 (to desimaler) for hvor sikkert dette kan sies ut fra utdraget alene.
+
+## 4) Ekstra robusthet (kanttilfeller)
+- Hvis teksten **ikke** har tydelige replikkmarkører, sett `flags.looks_like_drama = false`, men gjennomfør likevel en forsiktig eksposisjonsvurdering.
+- Ved svært kort eller fragmentert tekst: reduser detalj og øk `uncertainties`.
+
+""" + "**Utdrag:**  " + EXCERPT 
+
+
+
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            #temperature=0.3
+        )
+        content = response.choices[0].message.content
+        return content
+
+    except Exception as e:
+        print(f"Feil ved API-kall: {e}")
+        return None
+
+    finally:
+        time.sleep(delay)
+
+
