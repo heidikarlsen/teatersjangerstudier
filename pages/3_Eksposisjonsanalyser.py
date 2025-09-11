@@ -71,6 +71,7 @@ with st.sidebar.expander("Mer info"):
         """
     )
 
+st.sidebar.divider()
 
 # Sjangervalg -  med minst én URN med fulltekst
 
