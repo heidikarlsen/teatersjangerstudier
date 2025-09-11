@@ -58,6 +58,8 @@ st.sidebar.markdown(
 )
 
 
+st.sidebar.divider()
+
 st.sidebar.header("Filtrering av eksposisjoner for AI-analyser")
 
 with st.sidebar.expander("Mer info"):
@@ -70,8 +72,6 @@ with st.sidebar.expander("Mer info"):
         Definer eventuelt andre kritierer eller la det stå urørt for å søke i tilfeldig utdrag/alle tekster eller alle/tilfeldig utdrag innen valgt sjanger.
         """
     )
-
-st.sidebar.divider()
 
 # Sjangervalg -  med minst én URN med fulltekst
 
