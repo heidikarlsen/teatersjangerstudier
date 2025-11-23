@@ -2,8 +2,131 @@ import streamlit as st
 import dhlab as dh 
 import pandas as pd
 from dhlab import Counts
+import plotly.express as px
+import numpy as np
 
 st.set_page_config(page_title="Teatersjangerstudier - Frekvenser", page_icon="🎭", layout="wide")
+
+# ================================================================
+# === 1) Sammnenligning av frekvenser for nøkkelord i sjangre ===
+# ================================================================
+
+
+st.header("Sammenlign nøkkelord på tvers av sjangre")
+
+st.markdown(
+    """
+Skriv inn et **søkeord** (f.eks. `norsk*`, `patriot*`, `nation*`).  
+Analysen viser hvor ofte ordet forekommer i hver sjanger, både som **antall treff** og **relativ frekvens**.
+"""
+)
+
+keyword = st.text_input("Nøkkelord (wildcard støttes)", "")
+
+if keyword:
+
+    # ----------------------------
+    # 1. Hent alle sjangre med minst én URN
+    # ----------------------------
+    full_df = meta_df[
+        meta_df["urn"].notna() & meta_df["urn"].str.startswith("URN")
+    ].copy()
+
+    genres = sorted(full_df["genre"].dropna().unique())
+
+    # ----------------------------
+    # 2. Funksjon: frekvens i én sjanger
+    # ----------------------------
+    def keyword_stats_for_genre(genre, keyword):
+        """Returnerer total forekomster + relativ frekvens for sjanger."""
+        gdf = full_df[full_df["genre"].str.casefold() == genre.casefold()]
+        urns = gdf["urn"].tolist()
+
+        if not urns:
+            return 0, 0.0
+
+        corpus = dh.Corpus()
+        corpus.extend_from_identifiers(urns)
+
+        counts = Counts(corpus)
+        total_tokens = counts.frame.sum().sum()
+
+        # pattern matching for wildcard
+        key = keyword.casefold()
+        keys = [w for w in counts.frame.index if w.casefold().startswith(key.replace("*", ""))]
+
+        absolute = counts.frame.loc[keys].sum().sum() if keys else 0
+        relative = absolute / total_tokens if total_tokens > 0 else 0
+
+        return int(absolute), float(relative)
+
+    # ----------------------------
+    # 3. Beregn for alle sjangre
+    # ----------------------------
+    rows = []
+    for g in genres:
+        abs_count, rel_freq = keyword_stats_for_genre(g, keyword)
+        n_works = full_df[full_df["genre"] == g]["urn"].nunique()
+        rows.append((g, n_works, abs_count, rel_freq))
+
+    result_df = pd.DataFrame(rows, columns=["Genre", "Works", "Hits", "RelativeFreq"])
+    result_df = result_df.sort_values("Hits", ascending=False)
+
+    st.subheader(f"Resultater for nøkkelord: **{keyword}**")
+    st.write("Sortert etter antall forekomster:")
+
+    # Vis tabellen
+    st.dataframe(result_df, use_container_width=True)
+
+    # ----------------------------
+    # 4. HEATMAP: sjanger × tiår
+    # ----------------------------
+
+    st.subheader("Fordeling over tid (tiår) og sjanger")
+
+    # Lag tiårs-kolonne
+    full_df["decade"] = (full_df["year"] // 10) * 10
+
+    heat_data = []
+
+    for g in genres:
+        gdf = full_df[full_df["genre"] == g]
+        for decade in sorted(gdf["decade"].unique()):
+            urns = gdf[gdf["decade"] == decade]["urn"].tolist()
+            if not urns:
+                hits = 0
+            else:
+                corpus = dh.Corpus()
+                corpus.extend_from_identifiers(urns)
+                counts = Counts(corpus)
+
+                key = keyword.casefold()
+                keys = [w for w in counts.frame.index if w.casefold().startswith(key.replace("*", ""))]
+
+                hits = counts.frame.loc[keys].sum().sum() if keys else 0
+
+            heat_data.append([g, decade, hits])
+
+    heat_df = pd.DataFrame(heat_data, columns=["Genre", "Decade", "Hits"])
+
+    # Plotly heatmap
+    fig = px.imshow(
+        heat_df.pivot(index="Genre", columns="Decade", values="Hits").fillna(0),
+        labels=dict(x="Decade", y="Genre", color="Hits"),
+        aspect="auto",
+        color_continuous_scale="Reds"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.info(
+        "Merk: Relative frekvenser beregnes for hele sjangeren, mens heatmap viser rene forekomster per tiår."
+    )
+
+
+# ======================================================================
+# === 2) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
+# ======================================================================
 
 st.title("Frekvenser i delkorpora definert ved sjangerbenevnelser")
 
