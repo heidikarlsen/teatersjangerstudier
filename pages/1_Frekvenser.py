@@ -64,61 +64,60 @@ if keyword:
     # ----------------------------
     # 2. Analysefunksjon
     # ----------------------------
-    def stats_for_genre(genre, keyword):
-        """Returnerer: hits, relative freq, works_with_hits, works_total."""
+    def stats_for_genre(genre):
+        """Returnerer: hits, relative freq, works_with_hits."""
         gdf = full_df[full_df["genre"].str.casefold() == genre.casefold()]
         urns = gdf["urn"].tolist()
 
         if not urns:
-            return 0, 0.0, 0, 0
+            return 0, 0.0, 0
 
         corpus = dh.Corpus()
         corpus.extend_from_identifiers(urns)
         counts = Counts(corpus)
 
-        # total tokens
         total_tokens = counts.frame.sum().sum()
-
-        # wildcard matching
         match_words = [w for w in counts.frame.index if w.casefold().startswith(key_base)]
 
         if not match_words:
-            return 0, 0.0, 0, len(urns)
+            return 0, 0.0, 0
 
-        # total hits
         hits = int(counts.frame.loc[match_words].sum().sum())
 
-        # count how many distinct works contain the word(s)
         per_work = counts.frame.loc[match_words].sum(axis=0)
         works_with_hits = int((per_work > 0).sum())
 
-        relative = hits / total_tokens if total_tokens > 0 else 0
+        relative = hits / total_tokens if total_tokens else 0
 
-        return hits, relative, works_with_hits, len(urns)
+        return hits, relative, works_with_hits
 
     # ----------------------------
-    # 3. Beregn sjangerstatistikk
+    # 3. Sjangerstatistikk
     # ----------------------------
     rows = []
     for g in genres:
-        hits, rel, works_hit, n_total = stats_for_genre(g, keyword)
-        if hits > 0:   # ta kun med sjangre der ordet faktisk forekommer
-            rows.append((g, hits, rel, works_hit, n_total))
+        hits, rel, works_hit = stats_for_genre(g)
+        if hits > 0:
+            rows.append((g, hits, rel, works_hit))
 
-    result_df = pd.DataFrame(rows, columns=["Genre", "Hits", "RelativeFreq", "WorksWithHits", "WorksTotal"])
-    result_df = result_df.sort_values("Hits", ascending=False)
+    result_df = pd.DataFrame(rows, columns=["Genre", "Hits", "RelativeFreq", "WorksWithHits"])
+
+    # Sorter etter relativ frekvens, ikke rå hits
+    result_df = result_df.sort_values("RelativeFreq", ascending=False)
 
     st.subheader(f"Resultater for nøkkelord: **{keyword}**")
     st.dataframe(result_df, use_container_width=True)
 
     # ----------------------------
-    # 4. HEATMAP
+    # 4. HEATMAP — relativ frekvens per tiår
     # ----------------------------
-    st.subheader("Temporal distribution (hits per decade per genre)")
+    st.subheader("Fordeling over tid (relativ frekvens per tiår per sjanger)")
+
+    active_genres = result_df["Genre"].tolist()  # bare sjangre med treff
 
     heat_rows = []
 
-    for g in genres:
+    for g in active_genres:
         gdf = full_df[full_df["genre"] == g]
         decades = sorted(gdf["decade"].unique())
 
@@ -136,25 +135,32 @@ if keyword:
             corpus = dh.Corpus()
             corpus.extend_from_identifiers(urns)
             counts = Counts(corpus)
+
+            total_tokens = counts.frame.sum().sum()
             match_words = [w for w in counts.frame.index if w.casefold().startswith(key_base)]
-
             hits = int(counts.frame.loc[match_words].sum().sum()) if match_words else 0
-            heat_rows.append([g, d, hits])
 
-    heat_df = pd.DataFrame(heat_rows, columns=["Genre", "Decade", "Hits"])
-    heat_pivot = heat_df.pivot(index="Genre", columns="Decade", values="Hits").fillna(0)
+            rel = hits / total_tokens if total_tokens else 0
+            heat_rows.append([g, d, rel])
+
+    heat_df = pd.DataFrame(heat_rows, columns=["Genre", "Decade", "RelFreq"])
+    heat_pivot = heat_df.pivot(index="Genre", columns="Decade", values="RelFreq").fillna(0)
 
     fig = px.imshow(
         heat_pivot,
-        labels=dict(x="Decade", y="Genre", color="Hits"),
+        labels=dict(x="Decade", y="Genre", color="Relativ frekvens"),
         aspect="auto",
         color_continuous_scale="Reds"
     )
 
-    fig.update_yaxes(tickmode="array", tickvals=list(range(len(heat_pivot.index))), ticktext=list(heat_pivot.index))
+    fig.update_yaxes(
+        tickmode="array",
+        tickvals=list(range(len(heat_pivot.index))),
+        ticktext=list(heat_pivot.index)
+    )
 
     st.plotly_chart(fig, use_container_width=True)
-
+    
 # ======================================================================
 # === 2) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
 # ======================================================================
