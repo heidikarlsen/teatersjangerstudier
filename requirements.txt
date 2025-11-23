@@ -5,3 +5,4 @@ dhlab
 matplotlib
 scipy
 openai
+plotly
