@@ -11,7 +11,7 @@ st.set_page_config(page_title="Teatersjangerstudier - Frekvenser", page_icon="�
 meta_df = pd.read_excel("Sjangre_kategorisert_010625.xlsx")
 
 # ================================================================
-# === 1) Sammnenligning av frekvenser for nøkkelord i sjangre ===
+# === 1) Sammnenligning av frekvenser per sjanger for nøkkelord ===
 # ================================================================
 
 
@@ -21,111 +21,139 @@ st.markdown(
     """
 Skriv inn et **søkeord** (f.eks. `norsk*`, `patriot*`, `nation*`).  
 Analysen viser hvor ofte ordet forekommer i hver sjanger, både som **antall treff** og **relativ frekvens**.
+Du får: 
+
+- antall **verk hvor ordet forekommer**
+- totalt antall **treff**
+- **relativ frekvens** (per sjanger)
+- **heatmap** som viser utvikling per tiår
+
 """
 )
+
+
+# --- Velg tiårsintervall for heatmap ---
+min_decade = int(meta_df["year"].min() // 10 * 10)
+max_decade = int(meta_df["year"].max() // 10 * 10)
+
+heat_range = st.slider(
+    "Velg tidsintervall for heatmap (tiår)",
+    min_value=min_decade,
+    max_value=max_decade,
+    value=(min_decade, max_decade),
+    step=10
+)
+
 
 keyword = st.text_input("Nøkkelord (wildcard støttes)", "")
 
 if keyword:
 
     # ----------------------------
-    # 1. Hent alle sjangre med minst én URN
+    # 1. Forbered data
     # ----------------------------
     full_df = meta_df[
         meta_df["urn"].notna() & meta_df["urn"].str.startswith("URN")
     ].copy()
 
+    full_df["decade"] = (full_df["year"] // 10) * 10
+
     genres = sorted(full_df["genre"].dropna().unique())
+    key_base = keyword.replace("*", "").casefold()
 
     # ----------------------------
-    # 2. Funksjon: frekvens i én sjanger
+    # 2. Analysefunksjon
     # ----------------------------
-    def keyword_stats_for_genre(genre, keyword):
-        """Returnerer total forekomster + relativ frekvens for sjanger."""
+    def stats_for_genre(genre, keyword):
+        """Returnerer: hits, relative freq, works_with_hits, works_total."""
         gdf = full_df[full_df["genre"].str.casefold() == genre.casefold()]
         urns = gdf["urn"].tolist()
 
         if not urns:
-            return 0, 0.0
+            return 0, 0.0, 0, 0
 
         corpus = dh.Corpus()
         corpus.extend_from_identifiers(urns)
-
         counts = Counts(corpus)
+
+        # total tokens
         total_tokens = counts.frame.sum().sum()
 
-        # pattern matching for wildcard
-        key = keyword.casefold()
-        keys = [w for w in counts.frame.index if w.casefold().startswith(key.replace("*", ""))]
+        # wildcard matching
+        match_words = [w for w in counts.frame.index if w.casefold().startswith(key_base)]
 
-        absolute = counts.frame.loc[keys].sum().sum() if keys else 0
-        relative = absolute / total_tokens if total_tokens > 0 else 0
+        if not match_words:
+            return 0, 0.0, 0, len(urns)
 
-        return int(absolute), float(relative)
+        # total hits
+        hits = int(counts.frame.loc[match_words].sum().sum())
+
+        # count how many distinct works contain the word(s)
+        per_work = counts.frame.loc[match_words].sum(axis=0)
+        works_with_hits = int((per_work > 0).sum())
+
+        relative = hits / total_tokens if total_tokens > 0 else 0
+
+        return hits, relative, works_with_hits, len(urns)
 
     # ----------------------------
-    # 3. Beregn for alle sjangre
+    # 3. Beregn sjangerstatistikk
     # ----------------------------
     rows = []
     for g in genres:
-        abs_count, rel_freq = keyword_stats_for_genre(g, keyword)
-        n_works = full_df[full_df["genre"] == g]["urn"].nunique()
-        rows.append((g, n_works, abs_count, rel_freq))
+        hits, rel, works_hit, n_total = stats_for_genre(g, keyword)
+        if hits > 0:   # ta kun med sjangre der ordet faktisk forekommer
+            rows.append((g, hits, rel, works_hit, n_total))
 
-    result_df = pd.DataFrame(rows, columns=["Genre", "Works", "Hits", "RelativeFreq"])
+    result_df = pd.DataFrame(rows, columns=["Genre", "Hits", "RelativeFreq", "WorksWithHits", "WorksTotal"])
     result_df = result_df.sort_values("Hits", ascending=False)
 
     st.subheader(f"Resultater for nøkkelord: **{keyword}**")
-    st.write("Sortert etter antall forekomster:")
-
-    # Vis tabellen
     st.dataframe(result_df, use_container_width=True)
 
     # ----------------------------
-    # 4. HEATMAP: sjanger × tiår
+    # 4. HEATMAP
     # ----------------------------
+    st.subheader("Temporal distribution (hits per decade per genre)")
 
-    st.subheader("Fordeling over tid (tiår) og sjanger")
-
-    # Lag tiårs-kolonne
-    full_df["decade"] = (full_df["year"] // 10) * 10
-
-    heat_data = []
+    heat_rows = []
 
     for g in genres:
         gdf = full_df[full_df["genre"] == g]
-        for decade in sorted(gdf["decade"].unique()):
-            urns = gdf[gdf["decade"] == decade]["urn"].tolist()
+        decades = sorted(gdf["decade"].unique())
+
+        for d in decades:
+            if not (heat_range[0] <= d <= heat_range[1]):
+                continue
+
+            sub = gdf[gdf["decade"] == d]
+            urns = sub["urn"].tolist()
+
             if not urns:
-                hits = 0
-            else:
-                corpus = dh.Corpus()
-                corpus.extend_from_identifiers(urns)
-                counts = Counts(corpus)
+                heat_rows.append([g, d, 0])
+                continue
 
-                key = keyword.casefold()
-                keys = [w for w in counts.frame.index if w.casefold().startswith(key.replace("*", ""))]
+            corpus = dh.Corpus()
+            corpus.extend_from_identifiers(urns)
+            counts = Counts(corpus)
+            match_words = [w for w in counts.frame.index if w.casefold().startswith(key_base)]
 
-                hits = counts.frame.loc[keys].sum().sum() if keys else 0
+            hits = int(counts.frame.loc[match_words].sum().sum()) if match_words else 0
+            heat_rows.append([g, d, hits])
 
-            heat_data.append([g, decade, hits])
+    heat_df = pd.DataFrame(heat_rows, columns=["Genre", "Decade", "Hits"])
+    heat_pivot = heat_df.pivot(index="Genre", columns="Decade", values="Hits").fillna(0)
 
-    heat_df = pd.DataFrame(heat_data, columns=["Genre", "Decade", "Hits"])
-
-    # Plotly heatmap
     fig = px.imshow(
-        heat_df.pivot(index="Genre", columns="Decade", values="Hits").fillna(0),
+        heat_pivot,
         labels=dict(x="Decade", y="Genre", color="Hits"),
         aspect="auto",
         color_continuous_scale="Reds"
     )
 
+    fig.update_yaxes(tickmode="array", tickvals=list(range(len(heat_pivot.index))), ticktext=list(heat_pivot.index))
+
     st.plotly_chart(fig, use_container_width=True)
-
-    st.info(
-        "Merk: Relative frekvenser beregnes for hele sjangeren, mens heatmap viser rene forekomster per tiår."
-    )
-
 
 # ======================================================================
 # === 2) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
