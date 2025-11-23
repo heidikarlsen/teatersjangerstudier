@@ -21,12 +21,18 @@ st.markdown(
     """
 Skriv inn et **søkeord** (f.eks. `norsk*`, `patriot*`, `nation*`).  
 Analysen viser hvor ofte ordet forekommer i hver sjanger, både som **antall treff** og **relativ frekvens**.
-Du får: 
 
+Du får først en tabell med: 
+
+- **relativ frekvens** (per sjanger) (som tabellen er sortert etter)
 - antall **verk hvor ordet forekommer**
 - totalt antall **treff**
-- **relativ frekvens** (per sjanger)
-- **heatmap** som viser utvikling per tiår
+
+deretter:
+
+- **heatmap** som viser utvikling (relativ frekvens) per tiår
+
+NB. Bregningen tar noe tid (følg med på det "arbeidende" ikonet øverst til høyre). Først kommer tabellen, så jobber programmet videre og viser etter hvert heatmap 
 
 """
 )
@@ -66,7 +72,7 @@ if keyword:
     # ----------------------------
     def stats_for_genre(genre):
         """Returnerer: hits, relative freq, works_with_hits."""
-        gdf = full_df[full_df["genre"].str.casefold() == genre.casefold()]
+        gdf = full_df[full_df["genre"].str.casefold() == genre.casefold()] #casefold() istedenfor lower() unødvendig i denne sammenheng, men greit å vite om
         urns = gdf["urn"].tolist()
 
         if not urns:
@@ -160,7 +166,7 @@ if keyword:
     )
 
     st.plotly_chart(fig, use_container_width=True)
-    
+
 # ======================================================================
 # === 2) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
 # ======================================================================
