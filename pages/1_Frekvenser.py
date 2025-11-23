@@ -7,12 +7,15 @@ import numpy as np
 
 st.set_page_config(page_title="Teatersjangerstudier - Frekvenser", page_icon="🎭", layout="wide")
 
+# === Last metadata ===
+meta_df = pd.read_excel("Sjangre_kategorisert_010625.xlsx")
+
 # ================================================================
 # === 1) Sammnenligning av frekvenser for nøkkelord i sjangre ===
 # ================================================================
 
 
-st.header("Sammenlign nøkkelord på tvers av sjangre")
+st.header("1.Sammenlign nøkkelord på tvers av sjangre")
 
 st.markdown(
     """
@@ -128,7 +131,7 @@ if keyword:
 # === 2) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
 # ======================================================================
 
-st.title("Frekvenser i delkorpora definert ved sjangerbenevnelser")
+st.header("2.Frekvenser i delkorpora definert ved sjangerbenevnelser")
 
 st.markdown(
     """
@@ -140,8 +143,7 @@ st.markdown(
     """
 )
 
-# === Last metadata ===
-meta_df = pd.read_excel("Sjangre_kategorisert_010625.xlsx")
+
 
 # === Funksjon for å hente URN-er ===
 def get_urns_for_genre(df, genre, year_from, year_to):
