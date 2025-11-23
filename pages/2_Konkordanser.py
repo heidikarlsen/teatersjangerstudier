@@ -91,11 +91,12 @@ if query and urns:
         match_meta = filtered[filtered["urn"] == urn]
         if not match_meta.empty:
             meta = match_meta.iloc[0]
+            genre = meta.get("genre", "")
             title = meta.get("title", "")
             author = meta.get("author", "")
             year = meta.get("year", "")
             url = f"https://urn.nb.no/{urn}"
-            header = f"[{title} – {author} – {year}]({url})"
+            header = f"[{genre} – {title} – {author} – {year}]({url})"
             st.markdown(f"{header}<br>{context}", unsafe_allow_html=True)
 else:
     st.info("Skriv inn et søkeord og velg en sjanger for å vise konkordanser.")
