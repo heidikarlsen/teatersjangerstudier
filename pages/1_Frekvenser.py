@@ -5,7 +5,7 @@ from dhlab import Counts
 
 st.set_page_config(page_title="Teatersjangerstudier - Frekvenser", page_icon="🎭", layout="wide")
 
-st.title("Frekvenser i delkorpora definert ved sjangerbenevnelser.")
+st.title("Frekvenser i delkorpora definert ved sjangerbenevnelser")
 
 st.markdown(
     """
