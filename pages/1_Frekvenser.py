@@ -169,98 +169,82 @@ if keyword:
 
 
 # ================================================================
-# === 2) TF–IDF: Sammenlign to verk (fra samme eller ulike sjangre) ===
+# === 2) TF–IDF: Sammenlign to verk (på tvers av sjangre)       ===
 # ================================================================
 
-st.header("2. TF–IDF: Sammenlign to verk (fra samme eller ulike sjangre)")
+st.header("2. TF–IDF: Sammenlign to verk (på tvers av sjangre)")
 
 st.markdown(
     """
 Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk
-sammenlignet med et annet, basert på *TF–IDF*.
+sammenlignet med et annet, basert på *Term Frequency – Inverse Document Frequency (TF–IDF)*.
 
-Du kan velge **to vilkårlige verk**, enten innen samme sjanger eller på tvers av sjangre.
-Kun verk som faktisk har **digital fulltekst** vises i nedtrekksmenyene.
+Merk: DHlab tilbyr ikke direkte fulltekstnedlasting, men fulltekst kan hentes
+via `Corpus.conc(query=None)`, som returnerer hele teksten som én streng.
 """
 )
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# --- Hent kun verk som HAR fulltekst ---
+# --- 1. Velg to sjangre ---
 df_full = meta_df[
     meta_df["urn"].notna() &
     meta_df["urn"].str.startswith("URN")
 ].copy()
 
-# --- Sjangre som har minst ett verk med fulltekst ---
-sjangerliste = sorted(df_full["genre"].dropna().unique())
+all_genres_tfidf = sorted(df_full["genre"].dropna().unique())
 
-# --- Funksjon for å vise verk pent ---
+colA, colB = st.columns(2)
+with colA:
+    genre_left = st.selectbox("Velg sjanger for verk 1", all_genres_tfidf)
+with colB:
+    genre_right = st.selectbox("Velg sjanger for verk 2", all_genres_tfidf)
+
+# --- 2. Velg verk innenfor hver sjanger ---
 def format_work(row):
     return f"{row['year']} — {row['title']} — {row['author']}"
 
-# --- Trygg uthenting av tekst ---
+gdf_left = df_full[df_full["genre"] == genre_left]
+gdf_right = df_full[df_full["genre"] == genre_right]
+
+work_options_left = gdf_left.apply(format_work, axis=1).tolist()
+work_options_right = gdf_right.apply(format_work, axis=1).tolist()
+
+work_to_urn_left = dict(zip(work_options_left, gdf_left["urn"]))
+work_to_urn_right = dict(zip(work_options_right, gdf_right["urn"]))
+
+with colA:
+    work1 = st.selectbox("Velg verk 1", work_options_left)
+with colB:
+    work2 = st.selectbox("Velg verk 2", work_options_right)
+
+urn1 = work_to_urn_left[work1]
+urn2 = work_to_urn_right[work2]
+
+# --- 3. Funksjon: hent fulltekst via conc() ---
 def get_text_from_urn(urn):
+    """Henter hele teksten via DHlab conc()."""
     try:
-        corpus = dh.Corpus()
-        corpus.extend_from_identifiers([urn])
-        # DHlab sin corpus har ingen get_text(), men 'conc' har
-        if hasattr(corpus, "get_text"):
-            return corpus.get_text()
-    except:
-        pass
-    return ""
-    
+        corp = dh.Corpus(urns=[urn])
+        conc = corp.conc(query=None)     # hele teksten returnert som én streng
+        if urn in conc:
+            return conc[urn]
+        return ""
+    except Exception as e:
+        return ""
 
-# ============================================================
-# === Velg verk 1 ===
-# ============================================================
-
-st.subheader("Velg første verk")
-
-valg_sjanger1 = st.selectbox("Sjanger for verk 1", sjangerliste)
-verk_df1 = df_full[df_full["genre"] == valg_sjanger1]
-
-verk_liste1 = verk_df1.apply(format_work, axis=1).tolist()
-verkmap1 = dict(zip(verk_liste1, verk_df1["urn"]))
-
-verk1 = st.selectbox("Velg verk 1", verk_liste1)
-urn1 = verkmap1[verk1]
-
-
-# ============================================================
-# === Velg verk 2 ===
-# ============================================================
-
-st.subheader("Velg andre verk")
-
-valg_sjanger2 = st.selectbox("Sjanger for verk 2", sjangerliste)
-verk_df2 = df_full[df_full["genre"] == valg_sjanger2]
-
-verk_liste2 = verk_df2.apply(format_work, axis=1).tolist()
-verkmap2 = dict(zip(verk_liste2, verk_df2["urn"]))
-
-verk2 = st.selectbox("Velg verk 2", verk_liste2)
-urn2 = verkmap2[verk2]
-
-
-# ============================================================
-# === Beregn TF–IDF ===
-# ============================================================
-
-if st.button("Beregn TF–IDF for verkene"):
-
+# --- 4. Beregn TF–IDF ---
+if st.button("Beregn TF–IDF"):
     text1 = get_text_from_urn(urn1)
     text2 = get_text_from_urn(urn2)
 
     if not text1 or not text2:
-        st.error("Kunne ikke hente digital fulltekst for ett eller begge verk.")
+        st.error("Kunne ikke hente fulltekst for ett eller begge verk.")
     else:
         vectorizer = TfidfVectorizer(
             lowercase=True,
-            token_pattern=r"[A-Za-zÆØÅæøå]+"
+            token_pattern=r"[A-Za-zÆØÅæøå]+",
         )
-
         X = vectorizer.fit_transform([text1, text2])
         feature_names = vectorizer.get_feature_names_out()
 
@@ -271,12 +255,16 @@ if st.button("Beregn TF–IDF for verkene"):
         abs_diff = np.abs(diff)
 
         top_n = 20
-        idxs = np.argsort(abs_diff)[::-1][:top_n]
+        top_idx = np.argsort(abs_diff)[::-1][:top_n]
 
         rows = []
-        for idx in idxs:
-            ordet = feature_names[idx]
-            rows.append((ordet, tfidf1[idx], tfidf2[idx], diff[idx]))
+        for idx in top_idx:
+            rows.append((
+                feature_names[idx],
+                tfidf1[idx],
+                tfidf2[idx],
+                diff[idx]
+            ))
 
         df_tfidf = pd.DataFrame(
             rows,
@@ -290,7 +278,7 @@ if st.button("Beregn TF–IDF for verkene"):
             df_tfidf,
             x="Ord",
             y="Forskjell",
-            title="Forskjell i TF–IDF (verk 1 minus verk 2)"
+            title="Forskjell i TF–IDF-score (verk 1 minus verk 2)"
         )
         st.plotly_chart(fig, use_container_width=True)
 
