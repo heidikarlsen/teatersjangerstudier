@@ -4,6 +4,8 @@ import pandas as pd
 from dhlab import Counts
 import plotly.express as px
 import numpy as np
+import requests
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 st.set_page_config(page_title="Teatersjangerstudier - Frekvenser", page_icon="🎭", layout="wide")
 
@@ -184,7 +186,6 @@ via `Corpus.conc(query=None)`, som returnerer hele teksten som én streng.
 """
 )
 
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 # --- 1. Velg to sjangre ---
 df_full = meta_df[
@@ -221,17 +222,25 @@ with colB:
 urn1 = work_to_urn_left[work1]
 urn2 = work_to_urn_right[work2]
 
-# --- 3. Funksjon: hent fulltekst via conc() ---
+# --- 3. Funksjon: hent fulltekst  ---
 def get_text_from_urn(urn):
-    """Henter hele teksten via DHlab conc()."""
+    """
+    Henter fulltekst direkte fra Nasjonalbibliotekets API.
+    Returnerer ren tekst.
+    """
     try:
-        corp = dh.Corpus(urns=[urn])
-        conc = corp.conc(query=None)     # hele teksten returnert som én streng
-        if urn in conc:
-            return conc[urn]
-        return ""
+        url = f"https://api.nb.no/texts/{urn}"
+        r = requests.get(url, timeout=20)
+        r.raise_for_status()
+
+        data = r.json()
+        pages = [p.get("text", "") for p in data.get("pages", [])]
+
+        return "\n".join(pages)
+
     except Exception as e:
         return ""
+
 
 # --- 4. Beregn TF–IDF ---
 if st.button("Beregn TF–IDF"):
