@@ -167,8 +167,116 @@ if keyword:
 
     st.plotly_chart(fig, use_container_width=True)
 
+
+# ================================================================
+# === 2) TF–IDF: Sammenlign to verk innen valgt sjanger ===
+# ================================================================
+
+st.header("2. TF–IDF: Sammenlign to verk innen en sjanger")
+
+st.markdown(
+    """
+Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk sammenlignet
+med et annet, basert på *Term Frequency – Inverse Document Frequency (TF–IDF)*.
+
+I 1800-talls drama forekommer mange **kapitaliserte substantiv**, noe som gjør at
+egennavn ofte vil ligge øverst på listen. Dette er normal og forventet oppførsel, og
+under de mest dominerende egennavnene vil man vanligvis finne tematisk interessante ord.
+"""
+)
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# --- Hent alle verk som har fulltekst ---
+df_full = meta_df[
+    meta_df["urn"].notna() & meta_df["urn"].str.startswith("URN")
+].copy()
+
+# --- Velg sjanger ---
+all_genres_tfidf = sorted(df_full["genre"].dropna().unique())
+selected_genre_tfidf = st.selectbox("Velg sjanger", all_genres_tfidf)
+
+gdf_tfidf = df_full[df_full["genre"] == selected_genre_tfidf]
+
+# --- Liste over verk i valgt sjanger ---
+def format_work(row):
+    return f"{row['year']} — {row['title']} — {row['author']}"
+
+work_options = gdf_tfidf.apply(format_work, axis=1).tolist()
+work_to_urn = dict(zip(work_options, gdf_tfidf["urn"]))
+
+col1, col2 = st.columns(2)
+
+with col1:
+    work1 = st.selectbox("Velg første verk", work_options)
+
+with col2:
+    work2 = st.selectbox("Velg andre verk", work_options)
+
+# --- Hent URN-er ---
+urn1 = work_to_urn[work1]
+urn2 = work_to_urn[work2]
+
+def get_text_from_urn(urn):
+    """Henter fulltekst fra et enkelt verk via dhlab."""
+    corpus = dh.Corpus(urn=urn)  # NB: må være urn=..., ikke identifier
+    try:
+        return corpus.get_text()
+    except:
+        return ""
+
+# --- Hent tekstene ---
+if st.button("Beregn TF–IDF"):
+    text1 = get_text_from_urn(urn1)
+    text2 = get_text_from_urn(urn2)
+
+    if not text1 or not text2:
+        st.error("Kunne ikke hente tekst for ett eller begge verk.")
+    else:
+        # --- Beregn TF–IDF ---
+        vectorizer = TfidfVectorizer(
+            lowercase=True,
+            token_pattern=r"[A-Za-zÆØÅæøå]+",  # norske ord
+        )
+        X = vectorizer.fit_transform([text1, text2])
+        feature_names = vectorizer.get_feature_names_out()
+
+        tfidf1 = X.toarray()[0]
+        tfidf2 = X.toarray()[1]
+
+        # --- Finn de mest distinktive ordene ---
+        diff = tfidf1 - tfidf2
+        abs_diff = np.abs(diff)
+
+        top_n = 20
+        top_indices = np.argsort(abs_diff)[::-1][:top_n]
+
+        rows = []
+        for idx in top_indices:
+            word = feature_names[idx]
+            rows.append((word, tfidf1[idx], tfidf2[idx], diff[idx]))
+
+        df_tfidf = pd.DataFrame(
+            rows,
+            columns=["Ord", "TF-IDF (verk 1)", "TF-IDF (verk 2)", "Forskjell"]
+        )
+
+        st.subheader("Topp distinktive ord")
+        st.dataframe(df_tfidf, use_container_width=True)
+
+        # --- Søylediagram ---
+        fig = px.bar(
+            df_tfidf,
+            x="Ord",
+            y="Forskjell",
+            title="Forskjell i TF–IDF-score (verk 1 minus verk 2)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+
 # ======================================================================
-# === 2) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
+# === 3) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
 # ======================================================================
 
 st.header("2.Frekvenser i delkorpora definert ved sjangerbenevnelser")

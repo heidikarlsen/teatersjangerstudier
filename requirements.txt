@@ -6,3 +6,4 @@ matplotlib
 scipy
 openai
 plotly
+scikit-learn
