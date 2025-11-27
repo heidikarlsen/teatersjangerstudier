@@ -6,6 +6,7 @@ import plotly.express as px
 import numpy as np
 import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
+import os
 
 st.set_page_config(page_title="Teatersjangerstudier - Frekvenser", page_icon="🎭", layout="wide")
 
@@ -171,89 +172,106 @@ if keyword:
 
 
 # ================================================================
-# === 2) TF–IDF: Sammenlign to verk (på tvers av sjangre)       ===
+# === 2) TF–IDF: Sammenlign to verk på tvers av sjangre ==========
 # ================================================================
 
-st.header("2. TF–IDF: Sammenlign to verk (på tvers av sjangre)")
+st.header("2. TF–IDF: Sammenlign to verk")
 
 st.markdown(
     """
-Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk
-sammenlignet med et annet, basert på *Term Frequency – Inverse Document Frequency (TF–IDF)*.
+Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk sammenlignet
+med et annet, basert på *Term Frequency – Inverse Document Frequency (TF–IDF)*.
 
-Merk: DHlab tilbyr ikke direkte fulltekstnedlasting, men fulltekst kan hentes
-via `Corpus.conc(query=None)`, som returnerer hele teksten som én streng.
+Vi bruker **lokale fulltekstfiler** (lagret i mappen `filer/`) som ble hentet fra
+Nasjonalbiblioteket. Det betyr at TF–IDF også fungerer for verk der NB-API ikke eksponerer
+fulltekst direkte via `dhlab`.
 """
 )
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+import os
 
-# --- 1. Velg to sjangre ---
-df_full = meta_df[
+# --- Hent kun verk som faktisk har lokal tekstfil i mappen 'filer/' ---
+def urn_has_local_file(urn):
+    """Returnerer True hvis filen finnes i ./filer/."""
+    if not isinstance(urn, str):
+        return False
+    filename = urn.split(":")[-1]
+    filepath = os.path.join("filer", filename)
+    return os.path.exists(filepath)
+
+df_full_local = meta_df[
     meta_df["urn"].notna() &
-    meta_df["urn"].str.startswith("URN")
+    meta_df["urn"].apply(urn_has_local_file)
 ].copy()
 
-all_genres_tfidf = sorted(df_full["genre"].dropna().unique())
-
+# --- Velg sjanger for verk 1 ---
+all_genres_tfidf = sorted(df_full_local["genre"].dropna().unique())
 colA, colB = st.columns(2)
-with colA:
-    genre_left = st.selectbox("Velg sjanger for verk 1", all_genres_tfidf)
-with colB:
-    genre_right = st.selectbox("Velg sjanger for verk 2", all_genres_tfidf)
 
-# --- 2. Velg verk innenfor hver sjanger ---
+with colA:
+    selected_genre_1 = st.selectbox("Velg sjanger for verk 1", all_genres_tfidf)
+
+with colB:
+    selected_genre_2 = st.selectbox("Velg sjanger for verk 2", all_genres_tfidf)
+
+# --- Filter for hvert sjangervalg ---
+gdf_1 = df_full_local[df_full_local["genre"] == selected_genre_1]
+gdf_2 = df_full_local[df_full_local["genre"] == selected_genre_2]
+
 def format_work(row):
     return f"{row['year']} — {row['title']} — {row['author']}"
 
-gdf_left = df_full[df_full["genre"] == genre_left]
-gdf_right = df_full[df_full["genre"] == genre_right]
+work_options_1 = gdf_1.apply(format_work, axis=1).tolist()
+work_options_2 = gdf_2.apply(format_work, axis=1).tolist()
 
-work_options_left = gdf_left.apply(format_work, axis=1).tolist()
-work_options_right = gdf_right.apply(format_work, axis=1).tolist()
+work_to_urn_1 = dict(zip(work_options_1, gdf_1["urn"]))
+work_to_urn_2 = dict(zip(work_options_2, gdf_2["urn"]))
 
-work_to_urn_left = dict(zip(work_options_left, gdf_left["urn"]))
-work_to_urn_right = dict(zip(work_options_right, gdf_right["urn"]))
+col1, col2 = st.columns(2)
 
-with colA:
-    work1 = st.selectbox("Velg verk 1", work_options_left)
-with colB:
-    work2 = st.selectbox("Velg verk 2", work_options_right)
+with col1:
+    work1 = st.selectbox("Velg verk 1", work_options_1)
 
-urn1 = work_to_urn_left[work1]
-urn2 = work_to_urn_right[work2]
+with col2:
+    work2 = st.selectbox("Velg verk 2", work_options_2)
 
-# --- 3. Funksjon: hent fulltekst  ---
+urn1 = work_to_urn_1[work1]
+urn2 = work_to_urn_2[work2]
+
+# --- HENT TEKST FRA LOKAL FIL ---
 def get_text_from_urn(urn):
     """
-    Henter fulltekst direkte fra Nasjonalbibliotekets API.
-    Returnerer ren tekst.
+    Leser lokal OCR-tekst basert på URN.
+    URN i Excel: URN:NBN:no-nb_digibok_XXXXXXXXXXXX
+    Filnavn i ./filer/: no-nb_digibok_XXXXXXXXXXXX
     """
-    try:
-        url = f"https://api.nb.no/texts/{urn}"
-        r = requests.get(url, timeout=20)
-        r.raise_for_status()
+    filename = urn.split(":")[-1]   # fjern 'URN:NBN:'
+    filepath = os.path.join("filer", filename)
 
-        data = r.json()
-        pages = [p.get("text", "") for p in data.get("pages", [])]
-
-        return "\n".join(pages)
-
-    except Exception as e:
+    if not os.path.exists(filepath):
         return ""
 
+    try:
+        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except:
+        return ""
 
-# --- 4. Beregn TF–IDF ---
+# --- Beregn TF–IDF ---
 if st.button("Beregn TF–IDF"):
     text1 = get_text_from_urn(urn1)
     text2 = get_text_from_urn(urn2)
 
     if not text1 or not text2:
-        st.error("Kunne ikke hente fulltekst for ett eller begge verk.")
+        st.error("Kunne ikke hente fulltekst for ett eller begge verk. "
+                 "Sjekk at filene ligger i mappen 'filer/'.")
     else:
         vectorizer = TfidfVectorizer(
             lowercase=True,
             token_pattern=r"[A-Za-zÆØÅæøå]+",
         )
+
         X = vectorizer.fit_transform([text1, text2])
         feature_names = vectorizer.get_feature_names_out()
 
@@ -264,34 +282,28 @@ if st.button("Beregn TF–IDF"):
         abs_diff = np.abs(diff)
 
         top_n = 20
-        top_idx = np.argsort(abs_diff)[::-1][:top_n]
+        top_indices = np.argsort(abs_diff)[::-1][:top_n]
 
         rows = []
-        for idx in top_idx:
-            rows.append((
-                feature_names[idx],
-                tfidf1[idx],
-                tfidf2[idx],
-                diff[idx]
-            ))
+        for idx in top_indices:
+            word = feature_names[idx]
+            rows.append((word, tfidf1[idx], tfidf2[idx], diff[idx]))
 
         df_tfidf = pd.DataFrame(
             rows,
-            columns=["Ord", "TF–IDF (verk 1)", "TF–IDF (verk 2)", "Forskjell"]
+            columns=["Word", "TF-IDF (Work 1)", "TF-IDF (Work 2)", "Difference"]
         )
 
-        st.subheader("Topp distinktive ord")
+        st.subheader("Mest distinktive ord mellom verkene")
         st.dataframe(df_tfidf, use_container_width=True)
 
         fig = px.bar(
             df_tfidf,
-            x="Ord",
-            y="Forskjell",
-            title="Forskjell i TF–IDF-score (verk 1 minus verk 2)"
+            x="Word",
+            y="Difference",
+            title=f"TF–IDF-forskjeller: {work1}  vs.  {work2}",
         )
         st.plotly_chart(fig, use_container_width=True)
-
-
 
 # ======================================================================
 # === 3) Sammnenligning av frekvenser i sjangerdefinerte delkorpora ===
