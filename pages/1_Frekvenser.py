@@ -169,89 +169,96 @@ if keyword:
 
 
 # ================================================================
-# === 2) TF–IDF: Sammenlign to verk innen valgt sjanger ===
+# === 2) TF–IDF: Sammenlign to verk (fra samme eller ulike sjangre) ===
 # ================================================================
 
-st.header("2. TF–IDF: Sammenlign to verk innen en sjanger")
+st.header("2. TF–IDF: Sammenlign to verk (fra samme eller ulike sjangre)")
 
 st.markdown(
     """
-Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk sammenlignet
-med et annet, basert på *Term Frequency – Inverse Document Frequency (TF–IDF)*.
+Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk
+sammenlignet med et annet, basert på *TF–IDF*.
 
-I 1800-talls drama forekommer mange **kapitaliserte substantiv**, noe som gjør at
-egennavn ofte vil ligge øverst på listen. Dette er normal og forventet oppførsel.
-Under egennavnene finner man vanligvis de mest tematiske forskjellene.
+Du kan velge **to vilkårlige verk**, enten innen samme sjanger eller på tvers av sjangre.
+Kun verk som faktisk har **digital fulltekst** vises i nedtrekksmenyene.
 """
 )
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# --- 1. Hent alle fulltekst-verk ---
+# --- Hent kun verk som HAR fulltekst ---
 df_full = meta_df[
-    meta_df["urn"].notna() & meta_df["urn"].str.startswith("URN")
+    meta_df["urn"].notna() &
+    meta_df["urn"].str.startswith("URN")
 ].copy()
 
-# --- 2. Sjangervalg ---
-all_genres_tfidf = sorted(df_full["genre"].dropna().unique())
-selected_genre_tfidf = st.selectbox("Velg sjanger", all_genres_tfidf)
+# --- Sjangre som har minst ett verk med fulltekst ---
+sjangerliste = sorted(df_full["genre"].dropna().unique())
 
-gdf_tfidf = df_full[df_full["genre"] == selected_genre_tfidf]
-
-# --- 3. Verkvalg i valgt sjanger ---
+# --- Funksjon for å vise verk pent ---
 def format_work(row):
     return f"{row['year']} — {row['title']} — {row['author']}"
 
-work_options = gdf_tfidf.apply(format_work, axis=1).tolist()
-work_to_urn = dict(zip(work_options, gdf_tfidf["urn"]))
-
-col1, col2 = st.columns(2)
-with col1:
-    work1 = st.selectbox("Velg første verk", work_options)
-with col2:
-    work2 = st.selectbox("Velg andre verk", work_options)
-
-urn1 = work_to_urn[work1]
-urn2 = work_to_urn[work2]
-
-# --- 4. Robust funksjon for å hente fulltekst fra én URN ---
+# --- Trygg uthenting av tekst ---
 def get_text_from_urn(urn):
-    """
-    Trygg uthenting av fulltekst for ett dokument.
-    Fungerer både lokalt og på Streamlit Cloud.
-    """
-    corpus = dh.Corpus()
-    corpus.extend_from_identifiers([urn])
-
-    # Nyere DHlab har corpus.get_text()
-    if hasattr(corpus, "get_text"):
-        try:
-            return corpus.get_text()
-        except Exception:
-            pass
-
-    # Fallback for eldre API-versjon
     try:
-        data = dh.get_document(urn)
-        if isinstance(data, dict) and "text" in data:
-            return data["text"]
-        return str(data)
-    except Exception:
-        return ""
+        corpus = dh.Corpus()
+        corpus.extend_from_identifiers([urn])
+        # DHlab sin corpus har ingen get_text(), men 'conc' har
+        if hasattr(corpus, "get_text"):
+            return corpus.get_text()
+    except:
+        pass
+    return ""
+    
+
+# ============================================================
+# === Velg verk 1 ===
+# ============================================================
+
+st.subheader("Velg første verk")
+
+valg_sjanger1 = st.selectbox("Sjanger for verk 1", sjangerliste)
+verk_df1 = df_full[df_full["genre"] == valg_sjanger1]
+
+verk_liste1 = verk_df1.apply(format_work, axis=1).tolist()
+verkmap1 = dict(zip(verk_liste1, verk_df1["urn"]))
+
+verk1 = st.selectbox("Velg verk 1", verk_liste1)
+urn1 = verkmap1[verk1]
 
 
-# --- 5. Start beregning ---
-if st.button("Beregn TF–IDF"):
+# ============================================================
+# === Velg verk 2 ===
+# ============================================================
+
+st.subheader("Velg andre verk")
+
+valg_sjanger2 = st.selectbox("Sjanger for verk 2", sjangerliste)
+verk_df2 = df_full[df_full["genre"] == valg_sjanger2]
+
+verk_liste2 = verk_df2.apply(format_work, axis=1).tolist()
+verkmap2 = dict(zip(verk_liste2, verk_df2["urn"]))
+
+verk2 = st.selectbox("Velg verk 2", verk_liste2)
+urn2 = verkmap2[verk2]
+
+
+# ============================================================
+# === Beregn TF–IDF ===
+# ============================================================
+
+if st.button("Beregn TF–IDF for verkene"):
+
     text1 = get_text_from_urn(urn1)
     text2 = get_text_from_urn(urn2)
 
     if not text1 or not text2:
-        st.error("Kunne ikke hente tekst for ett eller begge verk.")
+        st.error("Kunne ikke hente digital fulltekst for ett eller begge verk.")
     else:
-        # --- 6. TF–IDF-beregning ---
         vectorizer = TfidfVectorizer(
             lowercase=True,
-            token_pattern=r"[A-Za-zÆØÅæøå]+",  # norske ord
+            token_pattern=r"[A-Za-zÆØÅæøå]+"
         )
 
         X = vectorizer.fit_transform([text1, text2])
@@ -264,27 +271,26 @@ if st.button("Beregn TF–IDF"):
         abs_diff = np.abs(diff)
 
         top_n = 20
-        top_indices = np.argsort(abs_diff)[::-1][:top_n]
+        idxs = np.argsort(abs_diff)[::-1][:top_n]
 
         rows = []
-        for idx in top_indices:
-            word = feature_names[idx]
-            rows.append((word, tfidf1[idx], tfidf2[idx], diff[idx]))
+        for idx in idxs:
+            ordet = feature_names[idx]
+            rows.append((ordet, tfidf1[idx], tfidf2[idx], diff[idx]))
 
         df_tfidf = pd.DataFrame(
             rows,
-            columns=["Ord", "TF-IDF (verk 1)", "TF-IDF (verk 2)", "Forskjell"]
+            columns=["Ord", "TF–IDF (verk 1)", "TF–IDF (verk 2)", "Forskjell"]
         )
 
         st.subheader("Topp distinktive ord")
         st.dataframe(df_tfidf, use_container_width=True)
 
-        # --- 7. Plot ---
         fig = px.bar(
             df_tfidf,
             x="Ord",
             y="Forskjell",
-            title="Forskjell i TF–IDF-score (verk 1 minus verk 2)",
+            title="Forskjell i TF–IDF (verk 1 minus verk 2)"
         )
         st.plotly_chart(fig, use_container_width=True)
 
