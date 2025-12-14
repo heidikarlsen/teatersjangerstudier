@@ -10,7 +10,7 @@ st.title("Teatersjangerstudier")
 
 st.markdown("### :blue[Dette er en app for å utforske teatersjangre på 1800-tallet. Vi benytter et metadata-excel-ark vi har laget med sjangerspesifikasjoner og kobler dette med tekstutvinningsmetoder på de tekstene i korpuset vi har tilgjengelig i fulltekst.]")
 
-st.markdown("#### Fulltekstversjonene er fra Nasjonalbiblioteket. Vi bruker deres ressurser for korpusbygging og digital tekstanalyse.")
+st.markdown("#### Fulltekstversjonene er fra Nasjonalbiblioteket. Vi bruker deres ressurser for korpusbygging og en del tekstanalyser.")
 
 st.markdown("#### [ImaginaNation-korpuset](https://doi.org/10.18261/edda.111.3.3) (Skare-Malvik et al. 2024) har vært til stor hjelp for å bygge korpuset i metadata-excel-arket.")
 
@@ -81,5 +81,5 @@ st.pyplot(fig)
 
 
 st.markdown("## Om denne appen")
-st.markdown("Per nå er det mulig å sammenlikne frekvenser mellom ulike sjangre og søke etter konkordanser.")
-st.markdown("Velg enten **frekvenser** eller **konkordanser** i sidebaren til venstre")
+st.markdown("Per nå er det mulig å sammenlikne frekvenser mellom ulike sjangre og søke etter konkordanser. Clustring er under utvikling og må tas med en klype salt. Det samme må eksposisjonsanalysene der API-et til Open AI er brukt med modellen gpt-5.")
+st.markdown("Velg analysetype i sidebaren til venstre")

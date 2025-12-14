@@ -35,7 +35,7 @@ deretter:
 
 - **heatmap** som viser utvikling (relativ frekvens) per tiår
 
-NB. Bregningen tar noe tid (følg med på det "arbeidende" ikonet øverst til høyre). Først kommer tabellen, så jobber programmet videre og viser etter hvert heatmap 
+NB. Bregningen tar noe tid (følg med på det "arbeidende" ikonet øverst til høyre). Først kommer tabellen, så jobber programmet videre og viser etter hvert heatmap. 
 
 """
 )
@@ -111,7 +111,7 @@ if keyword:
 
     result_df = pd.DataFrame(rows, columns=["Genre", "Hits", "RelativeFreq", "WorksWithHits"])
 
-    # Sorter etter relativ frekvens, ikke rå hits
+    # Sorter etter relativ frekvens
     result_df = result_df.sort_values("RelativeFreq", ascending=False)
 
     st.subheader(f"Resultater for nøkkelord: **{keyword}**")
@@ -197,6 +197,7 @@ Metoden kombinerer:
 
 Ord som forekommer ofte i ett dokument, men sjelden i andre dokumenter, får **høy TF–IDF-score**.  
 Ord som finnes i mange dokumenter i korpuset (som funksjonsord) får **lav score**.
+
 """
     )
 

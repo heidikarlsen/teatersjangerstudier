@@ -22,7 +22,7 @@ Denne funksjonen grupperer tekster på bakgrunn av mønstre gjennom
 en trestegs-prosess:
 
 1. **TF–IDF**: vektlegger ord som er særpregede for hver tekst.
-2. **UMAP**: reduserer den høydimensjonale TF–IDF-matrisen til 2D på en måte som bevarer struktur.
+2. **UMAP**: reduserer den høydimensjonale TF–IDF-matrisen.
 3. **KMeans-clustering**: unsupervised metode som finner grupper av tekster basert på likhet.
 
 Dette kan gi innsikt i om sjangre ligner på hverandre, om tekster danner undergrupper på tvers av sjangre, 
