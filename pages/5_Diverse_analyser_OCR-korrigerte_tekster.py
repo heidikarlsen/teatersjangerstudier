@@ -6,11 +6,10 @@ import numpy as np
 import os
 import re
 import html
+from sklearn.feature_extraction.text import TfidfVectorizer
+import plotly.express as px
 
 st.set_page_config(page_title="Teatersjangerstudier - Diverse analyser av OCR-korrigerte tekster", page_icon="🎭", layout="wide")
-
-# === Last metadata ===
-meta_df = pd.read_excel("1800-1849_020326.xlsx")
 
 
 # ================================================================
@@ -258,14 +257,125 @@ if keyword:
 st.divider()
 
 
+# ================================================================
+# === 2) TF–IDF-ANALYSER =========
+# ================================================================
+
+st.header("2. TF–IDF-analyser")
+
+st.markdown(
+    """
+Denne funksjonen viser hvilke ord som er **mest distinktive** i ett verk, 
+basert på *Term Frequency – Inverse Document Frequency (TF–IDF)*. TF–IDF måler hvor karakteristisk et ord er for et dokument sammenlignet med resten av korpuset.
+"""
+)
+
+with st.expander("Se mer inngående forklaring"):
+    st.markdown(
+        """
+Vi bruker scikit-learns implementasjon av TF–IDF, som beregner termvekter som normalisert termfrekvens multiplisert med den log-skalerte inverse dokumentfrekvensen.
+
+Metoden kombinerer:
+
+- **Term Frequency (TF):** hvor ofte ordet forekommer i dokumentet.  
+- **Inverse Document Frequency (IDF):** en logaritmisk nedvekting av ord som forekommer i mange dokumenter i korpuset.  
+  Logaritmisk skalering gjør at forskjeller i dokumentfrekvens håndteres på en måte som demper effekten av svært høye eller svært lave verdier, slik at vektingen reflekterer relative forskjeller heller enn rene absolutte frekvenser.
+
+Ord som forekommer ofte i ett dokument, men sjelden i andre dokumenter, får **høy TF–IDF-score**.  
+Ord som finnes i mange dokumenter i korpuset (som funksjonsord) får **lav score**.
+
+"""
+    )
+
+st.markdown(
+    """
+Her bruker vi de **OCR-korrigerte filene** basert på fulltekstene fra Nasjonalbiblioteket.
+
+**Verk vs. korpus** sammenligner ett verk med hele korpuset (per 16.04.2026 9 dramaer). OBS. lite korpus, bruk resultatene med omhu og vær oppmerksm
+på at en del funksjonsord og annet med liten semantisk verdi vil dukke opp.  
+
+"""
+)
+
+label_tf_idf = st.selectbox(
+    "Velg verk",
+        df_available["label"].tolist(),
+        key="verk"
+
+)
+
+
+top_n = st.slider("Hvor mange distinktive ord skal vises?", 20, 300, 100)
+
+
+# Hent tekst
+
+urn = df_available[df_available["label"] == label_tf_idf]["urn"].iloc[0]
+text_target = load_text_from_urn(urn)
+
+
+if st.button("Beregn TF–IDF for valgt verk"):
+    if not text_target:
+        st.error("Kunne ikke hente fulltekst for valgt verk.")
+    else:
+        # --- Lag korpuset: alle andre verk med tekst ---
+        corpus_texts = []
+        corpus_labels = []
+
+        for _, row in df_available.iterrows():
+            if row["urn"] != urn:
+                txt = load_text_from_urn(row["urn"])
+                if txt:
+                    corpus_texts.append(txt)
+                    corpus_labels.append(row["label"])
+
+        full_corpus = [text_target] + corpus_texts
+
+        # --- TF–IDF ---
+        vectorizer = TfidfVectorizer(
+            lowercase=True,
+            token_pattern=r"[A-Za-zÆØÅæøå]+",
+            min_df=1,
+        )
+
+        X = vectorizer.fit_transform(full_corpus)
+        feature_names = vectorizer.get_feature_names_out()
+
+        tfidf_target = X.toarray()[0]
+        tfidf_rest = X.toarray()[1:].mean(axis=0)
+
+        diff = tfidf_target - tfidf_rest
+        top_idx = diff.argsort()[::-1][:top_n]
+
+        rows = []
+        for idx in top_idx:
+            rows.append((feature_names[idx], tfidf_target[idx], tfidf_rest[idx], diff[idx]))
+
+        df_tfidf = pd.DataFrame(rows, columns=["Ord", "TF-IDF (verk)", "TF-IDF (korpus)", "Forskjell"])
+
+        st.write("### Mest særpregede ord i verket")
+        st.dataframe(df_tfidf, use_container_width=True)
+
+        fig = px.bar(
+            df_tfidf,
+            x="Ord",
+            y="Forskjell",
+            title="Særpregede ord (TF–IDF forskjell: verk minus korpus)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+
 
 # ================================================================
-# === 2) Konkordanser ===
+# === 3) Konkordanser ===
 # ================================================================
 
 
 
-st.header("2.Konkordanser")
+st.header("3.Konkordanser")
 
 st.markdown(
     """
