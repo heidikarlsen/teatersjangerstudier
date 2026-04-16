@@ -16,10 +16,7 @@ st.set_page_config(page_title="Teatersjangerstudier - Diverse analyser av OCR-ko
 # === 1) Frekvenser ===
 # ================================================================
 
-
 st.header("1.Frekvenser")
-
-
 
 st.markdown(
     """
@@ -281,8 +278,9 @@ Metoden kombinerer:
 - **Inverse Document Frequency (IDF):** en logaritmisk nedvekting av ord som forekommer i mange dokumenter i korpuset.  
   Logaritmisk skalering gjør at forskjeller i dokumentfrekvens håndteres på en måte som demper effekten av svært høye eller svært lave verdier, slik at vektingen reflekterer relative forskjeller heller enn rene absolutte frekvenser.
 
-Ord som forekommer ofte i ett dokument, men sjelden i andre dokumenter, får **høy TF–IDF-score**.  
-Ord som finnes i mange dokumenter i korpuset (som funksjonsord) får **lav score**.
+Ord som forekommer ofte i ett dokument, men sjelden i andre dokumenter, får gjerne **høy TF–IDF-score**, mens ord som finnes i mange tekster får lavere score.  
+
+I denne visningen rangeres ordene etter hvor mye høyere TF–IDF-vekt de har i det valgte verket enn i de øvrige tekstene i utvalget. Resultatet viser derfor **relativ særpreg**, ikke en absolutt liste over de viktigste ordene i verket.
 
 """
     )
@@ -291,8 +289,11 @@ st.markdown(
     """
 Her bruker vi de **OCR-korrigerte filene** basert på fulltekstene fra Nasjonalbiblioteket.
 
-**Verk vs. korpus** sammenligner ett verk med hele korpuset (per 16.04.2026 9 dramaer). OBS. lite korpus, bruk resultatene med omhu og vær oppmerksm
-på at en del funksjonsord og annet med liten semantisk verdi vil dukke opp.  
+Analysen sammenligner **ett valgt verk** med **de øvrige verkene i dette utvalget**. 
+Resultatet viser ord som får høyere TF–IDF-vekt i det valgte verket enn i de andre tekstene, og kan derfor leses som en oversikt over ord som er **relativt særpregede i akkurat dette materialet**.
+
+OBS: Utvalget er foreløpig lite (9 dramaer totalt per 16.04.2026), så resultatene bør brukes **eksplorativt** og tolkes med varsomhet. 
+Høye scorer betyr ikke nødvendigvis at et ord er tematisk viktig; de kan også skyldes navn, sjeldne former, språkvariasjon eller andre trekk som skiller verket fra de øvrige tekstene.
 
 """
 )
@@ -366,14 +367,9 @@ if st.button("Beregn TF–IDF for valgt verk"):
 
 
 
-
-
-
 # ================================================================
 # === 3) Konkordanser ===
 # ================================================================
-
-
 
 st.header("3.Konkordanser")
 
