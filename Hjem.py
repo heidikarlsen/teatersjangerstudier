@@ -18,11 +18,9 @@ st.markdown("#### [ImaginaNation-korpuset](https://doi.org/10.18261/edda.111.3.3
 st.divider()
 
 
-df = pd.read_excel("Sjangre_kategorisert_010625.xlsx")
-
 
 # Les data
-df = pd.read_excel("Sjangre_kategorisert_010625.xlsx")
+df = pd.read_excel("Sjangre_kategorisert_290926.xlsx")
 
 
 # Antall totalt og med fulltekst
