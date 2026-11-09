@@ -74,7 +74,7 @@ ax.legend()
 
 
 # Forkort lange sjangerbetegnelser i visningen
-etiketter = [s[:60] + "…" if len(s) > 35 else s for s in sjanger_df.index]
+etiketter = [s[:70] + "…" if len(s) > 35 else s for s in sjanger_df.index]
 ax.set_yticks(range(len(sjanger_df)), labels=etiketter)
 
 plt.tight_layout()
