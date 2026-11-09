@@ -74,7 +74,7 @@ ax.legend()
 
 
 # Forkort lange sjangerbetegnelser i visningen
-etiketter = [s[:50] + "…" if len(s) > 35 else s for s in sjanger_df.index]
+etiketter = [s[:60] + "…" if len(s) > 35 else s for s in sjanger_df.index]
 ax.set_yticks(range(len(sjanger_df)), labels=etiketter)
 
 plt.tight_layout()
@@ -84,6 +84,6 @@ st.pyplot(fig)
 
 
 st.markdown("## Om denne appen")
+st.markdown("Velg analysetype i sidebaren til venstre")
 st.markdown("Per nå er det mulig å sammenlikne frekvenser mellom ulike sjangre og søke etter konkordanser. Clustring er under utvikling og må tas med en klype salt. Det samme må eksposisjonsanalysene der API-et til Open AI er brukt med modellen gpt-5.")
 st.markdown("NB. Vi har OCR-korrigert enkelte av tekstene. Velg nederste punkt i menyen for analyser av dette underkorpuset")
-st.markdown("Velg analysetype i sidebaren til venstre")
